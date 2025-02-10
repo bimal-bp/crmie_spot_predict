@@ -4,7 +4,7 @@ import math
 import os
 
 # Load the model
-model_path = os.path.join(os.path.dirname(__file__), "model.pkl")  # Ensure correct path
+model_path = os.path.join(os.path.dirname(__file__), "train_model.pkl")  # Ensure correct path
 if not os.path.exists(model_path):
     st.error("Model file not found. Please check the file path and ensure 'model.pkl' exists in the 'Model' folder.")
     st.stop()
