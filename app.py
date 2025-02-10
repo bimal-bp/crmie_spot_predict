@@ -32,45 +32,60 @@ population = {
     17: 50.50, 18: 45.80
 }
 
-# Streamlit UI
-st.title("🚔 Crime Rate Prediction App")
-st.write("🔍 Predict the crime rate and severity for a selected city and year.")
+# Login Page
+st.title("🔐 User Login")
 
-# User input selection
-city_code = st.selectbox("🏙 Select City", options=list(city_names.keys()), format_func=lambda x: city_names[x])
-crime_code = st.selectbox("⚖ Select Crime Type", options=list(crimes_names.keys()), format_func=lambda x: crimes_names[x])
-year = st.number_input("📅 Enter Year", min_value=2011, max_value=2050, step=1)
+name = st.text_input("👤 Name")
+age = st.number_input("🎂 Age", min_value=10, max_value=100, step=1)
+gender = st.selectbox("⚥ Gender", ["Male", "Female", "Other"])
+marital_status = st.selectbox("💍 Marital Status", ["Single", "Married", "Divorced", "Widowed"])
 
-# Prediction button
-if st.button("🔮 Predict Crime Rate"):
-    pop = population[city_code]
-    year_diff = year - 2011
-    pop = pop + 0.01 * year_diff * pop  # Adjusting population growth at 1% per year
-
-    # Ensure inputs are numeric before prediction
-    try:
-        crime_rate = model.predict([[int(year), int(city_code), pop, int(crime_code)]])[0]
-    except Exception as e:
-        st.error(f"Prediction error: {e}")
-        st.stop()
-
-    # Determine crime severity
-    if crime_rate <= 1:
-        crime_status = "🟢 Very Low Crime Area"
-    elif crime_rate <= 5:
-        crime_status = "🟡 Low Crime Area"
-    elif crime_rate <= 15:
-        crime_status = "🔴 High Crime Area"
+if st.button("Submit"):
+    if not name:
+        st.warning("Please enter your name.")
     else:
-        crime_status = "🔥 Very High Crime Area"
+        st.success(f"Welcome, {name}!")
 
-    cases = math.ceil(crime_rate * pop)
+        # Proceed to Crime Prediction App
+        st.title("🚔 Crime Rate Prediction App")
+        st.write("🔍 Predict the crime rate and severity for a selected city and year.")
 
-    # Display results
-    st.subheader("📊 Prediction Results")
-    st.write(f"🏙 **City:** {city_names[city_code]}")
-    st.write(f"⚖ **Crime Type:** {crimes_names[crime_code]}")
-    st.write(f"📅 **Year:** {year}")
-    st.write(f"📈 **Predicted Crime Rate:** {crime_rate:.2f}")
-    st.write(f"👥 **Estimated Cases:** {cases}")
-    st.write(f"🚨 **Crime Severity:** {crime_status}")
+        # User input selection
+        city_code = st.selectbox("🏙 Select City", options=list(city_names.keys()), format_func=lambda x: city_names[x])
+        crime_code = st.selectbox("⚖ Select Crime Type", options=list(crimes_names.keys()), format_func=lambda x: crimes_names[x])
+        year = st.number_input("📅 Enter Year", min_value=2011, max_value=2050, step=1)
+
+        # Prediction button
+        if st.button("🔮 Predict Crime Rate"):
+            pop = population.get(city_code, 0)  # Ensure population exists
+            year_diff = year - 2011
+            pop = pop + 0.01 * year_diff * pop  # Adjusting population growth at 1% per year
+
+            # Ensure inputs are numeric before prediction
+            try:
+                crime_rate = model.predict([[int(year), int(city_code), pop, int(crime_code)]])[0]
+            except Exception as e:
+                st.error(f"Prediction error: {e}")
+                st.stop()
+
+            # Determine crime severity
+            if crime_rate <= 1:
+                crime_status = "🟢 Very Low Crime Area"
+            elif crime_rate <= 5:
+                crime_status = "🟡 Low Crime Area"
+            elif crime_rate <= 15:
+                crime_status = "🔴 High Crime Area"
+            else:
+                crime_status = "🔥 Very High Crime Area"
+
+            cases = math.ceil(crime_rate * pop)
+
+            # Display results
+            st.subheader("📊 Prediction Results")
+            st.write(f"🏙 **City:** {city_names[city_code]}")
+            st.write(f"⚖ **Crime Type:** {crimes_names[crime_code]}")
+            st.write(f"📅 **Year:** {year}")
+            st.write(f"👥 **Population:** {pop:.2f} Lakhs")
+            st.write(f"📈 **Predicted Crime Rate:** {crime_rate:.2f}")
+            st.write(f"📊 **Estimated Cases:** {cases}")
+            st.write(f"🚨 **Crime Severity:** {crime_status}")
