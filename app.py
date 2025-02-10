@@ -4,12 +4,12 @@ import math
 import os
 
 # Load the model
-model_path = os.path.join(os.path.dirname(__file__), "train_model.pkl")  # Ensure correct path
-if not os.path.exists(model_path):
-    st.error("Model file not found. Please check the file path and ensure 'model.pkl' exists in the 'Model' folder.")
+model_filename = "train_model.pkl"  # Directly use the correct filename
+if not os.path.exists(model_filename):
+    st.error(f"Model file not found: {model_filename}. Please ensure the file exists in the same directory.")
     st.stop()
 
-with open(model_path, 'rb') as file:
+with open(model_filename, 'rb') as file:
     model = pickle.load(file)
 
 # Define city names, crime types, and population dictionary
@@ -46,7 +46,7 @@ if st.button("🔮 Predict Crime Rate"):
     pop = population[city_code]
     year_diff = year - 2011
     pop = pop + 0.01 * year_diff * pop  # Adjusting population growth at 1% per year
-    
+
     # Ensure inputs are numeric before prediction
     try:
         crime_rate = model.predict([[int(year), int(city_code), pop, int(crime_code)]])[0]
