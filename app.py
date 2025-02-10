@@ -1,9 +1,12 @@
 import streamlit as st
+import pandas as pd
 import pickle
 import math
 import os
+import folium
+from streamlit_folium import folium_static
 
-# Load the model
+# Load the crime prediction model
 model_filename = "train_model.pkl"
 if not os.path.exists(model_filename):
     st.error(f"Model file not found: {model_filename}. Please ensure the file exists in the same directory.")
@@ -12,24 +15,19 @@ if not os.path.exists(model_filename):
 with open(model_filename, 'rb') as file:
     model = pickle.load(file)
 
-# Define city names, crime types, and population dictionary
-city_names = {
-    0: 'Ahmedabad', 1: 'Bengaluru', 2: 'Chennai', 3: 'Coimbatore', 4: 'Delhi',
-    5: 'Ghaziabad', 6: 'Hyderabad', 7: 'Indore', 8: 'Jaipur', 9: 'Kanpur',
-    10: 'Kochi', 11: 'Kolkata', 12: 'Kozhikode', 13: 'Lucknow', 14: 'Mumbai',
-    15: 'Nagpur', 16: 'Patna', 17: 'Pune', 18: 'Surat'
-}
+# Load city data from pickle file
+city_file = "cities.pkl"
+if not os.path.exists(city_file):
+    st.error(f"City file not found: {city_file}. Please ensure the file exists in the same directory.")
+    st.stop()
 
+df = pd.read_pickle(city_file)
+
+# Define crime categories
 crimes_names = {
     0: 'Crime Committed by Juveniles', 1: 'Crime against SC', 2: 'Crime against ST',
     3: 'Crime against Senior Citizen', 4: 'Crime against children', 5: 'Crime against women',
     6: 'Cyber Crimes', 7: 'Economic Offences', 8: 'Kidnapping', 9: 'Murder'
-}
-
-population = {
-    0: 63.50, 1: 85.00, 2: 87.00, 3: 21.50, 4: 163.10, 5: 23.60, 6: 77.50, 7: 21.70, 8: 30.70,
-    9: 29.20, 10: 21.20, 11: 141.10, 12: 20.30, 13: 29.00, 14: 184.10, 15: 25.00, 16: 20.50,
-    17: 50.50, 18: 45.80
 }
 
 # Initialize session state for login
@@ -53,7 +51,7 @@ if not st.session_state.logged_in:
         else:
             st.session_state.logged_in = True
             st.session_state.user_name = name
-            st.rerun()  # Rerun the app to load the next section
+            st.rerun()
 
 # If logged in, show Crime Prediction UI
 if st.session_state.logged_in:
@@ -61,20 +59,36 @@ if st.session_state.logged_in:
     st.success(f"Welcome, {st.session_state.user_name}! 🎉")
     st.write("🔍 Predict the crime rate and severity for a selected city and year.")
 
-    # User input selection
-    city_code = st.selectbox("🏙 Select City", options=list(city_names.keys()), format_func=lambda x: city_names[x])
+    # User selects a city
+    city_name = st.selectbox("🏙 Select City", df['city'].unique())
+    
+    # Find city latitude & longitude
+    city_data = df[df['city'] == city_name]
+    if not city_data.empty:
+        lat, lng = city_data.iloc[0]['lat'], city_data.iloc[0]['lng']
+    else:
+        lat, lng = None, None
+
+    # Display the map
+    if lat is not None and lng is not None:
+        city_map = folium.Map(location=[lat, lng], zoom_start=12)
+        folium.Marker([lat, lng], popup=city_name, tooltip=city_name).add_to(city_map)
+        st.subheader("📍 City Location")
+        folium_static(city_map)
+
+    # Select Crime Type & Year
     crime_code = st.selectbox("⚖ Select Crime Type", options=list(crimes_names.keys()), format_func=lambda x: crimes_names[x])
     year = st.number_input("📅 Enter Year", min_value=2011, max_value=2050, step=1)
 
     # Prediction button
     if st.button("🔮 Predict Crime Rate"):
-        pop = population.get(city_code, 0)  # Ensure population exists
+        pop = city_data.iloc[0]['population'] if not city_data.empty else 50  # Default if no data found
         year_diff = year - 2011
         pop = pop + 0.01 * year_diff * pop  # Adjusting population growth at 1% per year
 
-        # Ensure inputs are numeric before prediction
+        # Predict crime rate
         try:
-            crime_rate = model.predict([[int(year), int(city_code), pop, int(crime_code)]])[0]
+            crime_rate = model.predict([[int(year), city_name, pop, int(crime_code)]])[0]
         except Exception as e:
             st.error(f"Prediction error: {e}")
             st.stop()
@@ -93,7 +107,7 @@ if st.session_state.logged_in:
 
         # Display results
         st.subheader("📊 Prediction Results")
-        st.write(f"🏙 **City:** {city_names[city_code]}")
+        st.write(f"🏙 **City:** {city_name}")
         st.write(f"⚖ **Crime Type:** {crimes_names[crime_code]}")
         st.write(f"📅 **Year:** {year}")
         st.write(f"👥 **Population:** {pop:.2f} Lakhs")
