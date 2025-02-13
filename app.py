@@ -174,9 +174,9 @@ def district_wise_analysis():
                 lat, lon = location_row.iloc[0]['Latitude'], location_row.iloc[0]['Longitude']
                 
                 # Assign colors based on severity index
-                if severity < 45: 
+                if severity < 75: 
                     color = 'green'
-                elif 25 <= severity <= 75: 
+                elif 25 <= severity <= 175: 
                     color = 'orange'
                 else:
                     color = 'red'
