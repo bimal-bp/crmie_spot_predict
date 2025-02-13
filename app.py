@@ -156,11 +156,11 @@ if state:
             # Add CircleMarker to the map
             folium.CircleMarker(
                 location=[lat, lon],
-                radius=10,
+                radius=5,
                 color=color,
                 fill=True,
                 fill_color=color,
-                fill_opacity=0.7,
+                fill_opacity=0.9,
                 popup=f"{district}: {severity}"
             ).add_to(m)
     
