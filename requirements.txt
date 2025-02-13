@@ -4,5 +4,4 @@ folium
 streamlit-folium
 scikit-learn
 numpy
-geodesic
-geopy>=2.0.0
+geopy
