@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import folium
-from streamlit_folium import folium_static
 import pickle
 import math
 import os
@@ -37,19 +35,6 @@ population = {
     9: 29.20, 10: 21.20, 11: 141.10, 12: 20.30, 13: 29.00, 14: 184.10, 15: 25.00, 16: 20.50,
     17: 50.50, 18: 45.80
 }
-
-# Function to Generate Map
-def generate_city_map(city_name):
-    city_data = df[df['city'].str.lower() == city_name.lower()]
-    if city_data.empty:
-        st.error("City not found in database.")
-        return None
-
-    lat, lng = city_data.iloc[0]['lat'], city_data.iloc[0]['lng']
-    city_map = folium.Map(location=[lat, lng], zoom_start=12)
-    folium.Marker([lat, lng], popup=city_name, tooltip=city_name).add_to(city_map)
-
-    return city_map
 
 # Initialize Login State
 if "logged_in" not in st.session_state:
@@ -120,9 +105,3 @@ if st.session_state.logged_in:
         st.write(f"📈 **Predicted Crime Rate:** {crime_rate:.2f}")
         st.write(f"📊 **Estimated Cases:** {cases}")
         st.write(f"🚨 **Crime Severity:** {crime_status}")
-
-        # Generate and display map
-        st.subheader("🌍 City Location Map")
-        city_map = generate_city_map(selected_city)
-        if city_map:
-            folium_static(city_map)
