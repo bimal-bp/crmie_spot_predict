@@ -36,44 +36,19 @@ population = {
     17: 50.50, 18: 45.80
 }
 
-# Load Crime Data and Location Data
+# Load Crime Data
 @st.cache_data
-with open('crime_data.pkl', 'rb') as file:
-    data = pickle.load(file)
-print(data)
-
-
-@st.cache_data
-def load_location_data():
-    return pd.read_pickle('state_district_lat_long.pkl')
+def load_crime_data():
+    with open('crime_data.pkl', 'rb') as file:
+        return pickle.load(file)
 
 crime_data = load_crime_data()
-location_data = load_location_data()
-
 crime_data['state/ut'] = crime_data['state/ut'].str.title()
 crime_data['district'] = crime_data['district'].str.title()
-location_data['State'] = location_data['State'].str.title()
-location_data['District'] = location_data['District'].str.title()
-
-# Crime Severity Score Calculation
-crime_weights = {
-    'murder': 5,
-    'rape': 4,
-    'kidnapping & abduction': 4,
-    'robbery': 3,
-    'burglary': 3,
-    'dowry deaths': 3
-}
-
-def calculate_crime_severity(df):
-    weighted_sum = sum(df[col].sum() * weight for col, weight in crime_weights.items())
-    max_possible = sum(500 * weight for weight in crime_weights.values())
-    crime_index = (weighted_sum / max_possible) * 100 if max_possible > 0 else 0
-    return round(crime_index, 2)
 
 # UI Navigation
 st.title("🚔 Crime Analysis Dashboard")
-option = st.radio("Choose an Analysis:", ("Crime Rate Prediction", "Crime Risk Analysis for All Districts"))
+option = st.radio("Choose an Analysis:", ("Crime Rate Prediction", "Overall Crime Analysis"))
 
 if option == "Crime Rate Prediction":
     st.title("🚔 Crime Rate Prediction App")
@@ -93,7 +68,10 @@ if option == "Crime Rate Prediction":
             st.stop()
 
         cases = math.ceil(crime_rate * pop)
-        crime_status = "🟢 Very Low Crime Area" if crime_rate <= 1 else "🟡 Low Crime Area" if crime_rate <= 5 else "🔴 High Crime Area" if crime_rate <= 15 else "🔥 Very High Crime Area"
+        crime_status = "🟢 Very Low Crime Area" if crime_rate <= 1 else \
+                       "🟡 Low Crime Area" if crime_rate <= 5 else \
+                       "🔴 High Crime Area" if crime_rate <= 15 else \
+                       "🔥 Very High Crime Area"
 
         st.subheader("📊 Prediction Results")
         st.write(f"🏙 **City:** {city_names[city_code]}")
@@ -104,13 +82,7 @@ if option == "Crime Rate Prediction":
         st.write(f"📊 **Estimated Cases:** {cases}")
         st.write(f"🚨 **Crime Severity:** {crime_status}")
 
-elif option == "Crime Risk Analysis for All Districts":
-    st.title("🌍 Crime Risk Analysis for All Districts in a State")
-    state = st.selectbox('Select a State/UT:', crime_data['state/ut'].unique())
-
-    if state:
-        state_data = crime_data[crime_data['state/ut'] == state]
-        district_severity = {district: calculate_crime_severity(state_data[state_data['district'] == district]) for district in state_data['district'].unique()}
-        
-        df = pd.DataFrame(list(district_severity.items()), columns=['District', 'Crime Severity Index'])
-        st.dataframe(df)
+elif option == "Overall Crime Analysis":
+    st.title("📊 Overall Crime Analysis")
+    st.write("This section will provide overall crime trends and insights.")
+    st.write("More features can be added based on data visualization needs.")
