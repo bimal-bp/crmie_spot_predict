@@ -38,8 +38,10 @@ population = {
 
 # Load Crime Data and Location Data
 @st.cache_data
-def load_crime_data():
-    return pd.read_pickle('crime_data.pkl')
+with open('crime_data.pkl', 'rb') as file:
+    data = pickle.load(file)
+print(data)
+
 
 @st.cache_data
 def load_location_data():
