@@ -36,72 +36,79 @@ population = {
     17: 50.50, 18: 45.80
 }
 
-# Initialize Login State
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "user_name" not in st.session_state:
-    st.session_state.user_name = ""
+# Load Crime Data and Location Data
+@st.cache_data
+def load_crime_data():
+    return pd.read_pickle('crime_data.pkl')
 
-# Login Page
-if not st.session_state.logged_in:
-    st.title("🔐 User Login")
+@st.cache_data
+def load_location_data():
+    return pd.read_pickle('state_district_lat_long.pkl')
 
-    name = st.text_input("👤 Name")
-    age = st.number_input("🎂 Age", min_value=10, max_value=100, step=1)
-    gender = st.selectbox("⚥ Gender", ["Male", "Female", "Other"])
-    marital_status = st.selectbox("💍 Marital Status", ["Single", "Married", "Divorced", "Widowed"])
+crime_data = load_crime_data()
+location_data = load_location_data()
 
-    if st.button("Submit"):
-        if not name:
-            st.warning("Please enter your name.")
-        else:
-            st.session_state.logged_in = True
-            st.session_state.user_name = name
-            st.rerun()
+crime_data['state/ut'] = crime_data['state/ut'].str.title()
+crime_data['district'] = crime_data['district'].str.title()
+location_data['State'] = location_data['State'].str.title()
+location_data['District'] = location_data['District'].str.title()
 
-# If logged in, show Crime Prediction UI
-if st.session_state.logged_in:
+# Crime Severity Score Calculation
+crime_weights = {
+    'murder': 5,
+    'rape': 4,
+    'kidnapping & abduction': 4,
+    'robbery': 3,
+    'burglary': 3,
+    'dowry deaths': 3
+}
+
+def calculate_crime_severity(df):
+    weighted_sum = sum(df[col].sum() * weight for col, weight in crime_weights.items())
+    max_possible = sum(500 * weight for weight in crime_weights.values())
+    crime_index = (weighted_sum / max_possible) * 100 if max_possible > 0 else 0
+    return round(crime_index, 2)
+
+# UI Navigation
+st.title("🚔 Crime Analysis Dashboard")
+option = st.radio("Choose an Analysis:", ("Crime Rate Prediction", "Crime Risk Analysis for All Districts"))
+
+if option == "Crime Rate Prediction":
     st.title("🚔 Crime Rate Prediction App")
-    st.success(f"Welcome, {st.session_state.user_name}! 🎉")
-
-    # User selects city and crime type
     city_code = st.selectbox("🏙 Select City", options=list(city_names.keys()), format_func=lambda x: city_names[x])
     crime_code = st.selectbox("⚖ Select Crime Type", options=list(crimes_names.keys()), format_func=lambda x: crimes_names[x])
     year = st.number_input("📅 Enter Year", min_value=2011, max_value=2050, step=1)
 
-    # Automatically get the city name from the selection
-    selected_city = city_names[city_code]
-
-    # Prediction button
     if st.button("🔮 Predict Crime Rate"):
         pop = population.get(city_code, 0)
         year_diff = year - 2011
         pop = pop + 0.01 * year_diff * pop
-
+        
         try:
             crime_rate = model.predict([[int(year), int(city_code), pop, int(crime_code)]])[0]
         except Exception as e:
             st.error(f"Prediction error: {e}")
             st.stop()
 
-        # Determine crime severity
-        if crime_rate <= 1:
-            crime_status = "🟢 Very Low Crime Area"
-        elif crime_rate <= 5:
-            crime_status = "🟡 Low Crime Area"
-        elif crime_rate <= 15:
-            crime_status = "🔴 High Crime Area"
-        else:
-            crime_status = "🔥 Very High Crime Area"
-
         cases = math.ceil(crime_rate * pop)
+        crime_status = "🟢 Very Low Crime Area" if crime_rate <= 1 else "🟡 Low Crime Area" if crime_rate <= 5 else "🔴 High Crime Area" if crime_rate <= 15 else "🔥 Very High Crime Area"
 
-        # Display results
         st.subheader("📊 Prediction Results")
-        st.write(f"🏙 **City:** {selected_city}")
+        st.write(f"🏙 **City:** {city_names[city_code]}")
         st.write(f"⚖ **Crime Type:** {crimes_names[crime_code]}")
         st.write(f"📅 **Year:** {year}")
         st.write(f"👥 **Population:** {pop:.2f} Lakhs")
         st.write(f"📈 **Predicted Crime Rate:** {crime_rate:.2f}")
         st.write(f"📊 **Estimated Cases:** {cases}")
         st.write(f"🚨 **Crime Severity:** {crime_status}")
+
+elif option == "Crime Risk Analysis for All Districts":
+    st.title("🌍 Crime Risk Analysis for All Districts in a State")
+    state = st.selectbox('Select a State/UT:', crime_data['state/ut'].unique())
+
+    if state:
+        state_data = crime_data[crime_data['state/ut'] == state]
+        district_severity = {district: calculate_crime_severity(state_data[state_data['district'] == district]) for district in state_data['district'].unique()}
+        
+        df = pd.DataFrame(list(district_severity.items()), columns=['District', 'Crime Severity Index'])
+        st.dataframe(df)
