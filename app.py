@@ -173,39 +173,68 @@ def district_wise_analysis():
         
         # Compute crime severity for each district
         district_severity = {}
+        trend_data = {}  # To store crime severity trends for each district
+
         for district in state_data['district'].unique():
             district_data = state_data[state_data['district'] == district]
-            district_severity[district] = calculate_crime_severity(district_data)
+            
+            # Calculate crime severity for 2024
+            district_severity[district] = calculate_crime_severity(district_data[district_data['year'] == 2024])
+            
+            # Calculate crime severity for 2022, 2023, and 2024 (trend data)
+            trend_data[district] = {
+                year: calculate_crime_severity(district_data[district_data['year'] == year])
+                for year in [2022, 2023, 2024]
+            }
         
-        # Map Visualization
-        st.subheader("Crime Hotspot Map for All Districts")
-        m = folium.Map(location=[20.5937, 78.9629], zoom_start=6)  # Center map on India
+        # Display Crime Severity Map
+        st.subheader(f'Crime Severity Index for Districts in {state}')
         
-        for district, severity in district_severity.items():
-            location_row = location_data[(location_data['State'] == state) & (location_data['District'] == district)]
-            if not location_row.empty:
-                lat, lon = location_row.iloc[0]['Latitude'], location_row.iloc[0]['Longitude']
-                
-                # Assign colors based on severity index
-                if severity < 25: 
-                    color = 'green'
-                elif 25 <= severity <= 55: 
-                    color = 'orange'
-                else:
-                    color = 'red'
-                
-                # Add CircleMarker to the map
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=5,
-                    color=color,
-                    fill=True,
-                    fill_color=color,
-                    fill_opacity=0.9,
-                    popup=f"{district}: {severity}"
-                ).add_to(m)
+        state_location = location_data[location_data['State'] == state]
+        if not state_location.empty:
+            latitude, longitude = state_location.iloc[0]['Latitude'], state_location.iloc[0]['Longitude']
+            m = folium.Map(location=[latitude, longitude], zoom_start=7)
+
+            for district, severity in district_severity.items():
+                district_row = location_data[(location_data['State'] == state) & (location_data['District'] == district)]
+                if not district_row.empty:
+                    lat, lon = district_row.iloc[0]['Latitude'], district_row.iloc[0]['Longitude']
+                    color = 'green' if severity < 25 else 'orange' if severity <= 55 else 'red'
+                    folium.CircleMarker(
+                        location=[lat, lon],
+                        radius=10,
+                        color=color,
+                        fill=True,
+                        fill_color=color,
+                        fill_opacity=0.7,
+                        popup=f"{district}: {severity}"
+                    ).add_to(m)
+            
+            folium_static(m)
+        else:
+            st.warning("Coordinates for the selected state were not found.")
         
-        folium_static(m)
+        # Crime Severity Table
+        st.subheader("Crime Severity Index by District")
+        df_severity = pd.DataFrame(district_severity.items(), columns=['District', 'Crime Severity Index']).sort_values(by='Crime Severity Index', ascending=False)
+        st.dataframe(df_severity)
+
+        # Recommendations for selected district
+        selected_district = st.selectbox("Select a District for Detailed Analysis:", list(district_severity.keys()))
+        crime_severity_index = district_severity[selected_district]
+        st.metric(label="Crime Severity Index (Higher is riskier)", value=crime_severity_index)
+        
+        # Display Crime Severity Trend
+        st.subheader("Crime Severity Trend (2022 - 2024)")
+        trend_df = pd.DataFrame(trend_data[selected_district], index=["Crime Severity Index"]).T
+        st.line_chart(trend_df)
+        
+        if crime_severity_index < 25:
+            st.markdown("<div class='success-alert'>🟢 This area is relatively safe.</div>", unsafe_allow_html=True)
+        elif 25 <= crime_severity_index <= 55:
+            st.markdown("<div class='warning-alert'>🟠 Moderate risk; stay cautious.</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 
 # Location-wise Crime Analysis
 def location_wise_analysis():
