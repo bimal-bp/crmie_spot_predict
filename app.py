@@ -28,6 +28,18 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #45a049;
     }
+    .success-alert {
+        color: green;
+        font-weight: bold;
+    }
+    .warning-alert {
+        color: orange;
+        font-weight: bold;
+    }
+    .danger-alert {
+        color: red;
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -175,9 +187,9 @@ def district_wise_analysis():
                 lat, lon = location_row.iloc[0]['Latitude'], location_row.iloc[0]['Longitude']
                 
                 # Assign colors based on severity index
-                if severity < 75: 
+                if severity < 25: 
                     color = 'green'
-                elif 25 <= severity <= 175: 
+                elif 25 <= severity <= 55: 
                     color = 'orange'
                 else:
                     color = 'red'
