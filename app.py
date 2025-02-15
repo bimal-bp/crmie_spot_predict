@@ -184,7 +184,7 @@ def district_wise_analysis():
             # Calculate crime severity for 2022, 2023, and 2024 (trend data)
             trend_data[district] = {
                 year: calculate_crime_severity(district_data[district_data['year'] == year])
-                for year in [2022, 2023, 2024]
+                for year in [2023, 2024]
             }
         
         # Display Crime Severity Map
