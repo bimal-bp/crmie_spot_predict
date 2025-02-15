@@ -231,7 +231,7 @@ def district_wise_analysis():
         
         if crime_severity_index < 10:
             st.markdown("<div class='success-alert'>🟢 This area is relatively safe.</div>", unsafe_allow_html=True)
-        elif 25 <= crime_severity_index <= 25:
+        elif 11<= crime_severity_index <= 25:
             st.markdown("<div class='warning-alert'>🟠 Moderate risk; stay cautious.</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
