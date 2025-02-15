@@ -199,7 +199,7 @@ def district_wise_analysis():
                 district_row = location_data[(location_data['State'] == state) & (location_data['District'] == district)]
                 if not district_row.empty:
                     lat, lon = district_row.iloc[0]['Latitude'], district_row.iloc[0]['Longitude']
-                    color = 'green' if severity < 15 else 'orange' if severity <= 35 else 'red'
+                    color = 'green' if severity < 10 else 'orange' if severity < 35 else 'red'
                     folium.CircleMarker(
                         location=[lat, lon],
                         radius=10,
