@@ -259,7 +259,7 @@ def location_wise_analysis():
             hotspot_lat, hotspot_lon = row["Latitude"], row["Longitude"]
             distance_km = geodesic((user_lat, user_lon), (hotspot_lat, hotspot_lon)).km
             
-            if distance_km <= 50:  # Filter hotspots within 5 km radius
+            if distance_km <= 10:  # Filter hotspots within 5 km radius
                 severity = calculate_crime_severity(crime_data[crime_data['district'] == row['District']])
                 nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity))
         
