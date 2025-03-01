@@ -259,7 +259,7 @@ def location_wise_analysis():
             hotspot_lat, hotspot_lon = row["Latitude"], row["Longitude"]
             distance_km = geodesic((user_lat, user_lon), (hotspot_lat, hotspot_lon)).km
             
-            if distance_km <= 5:  # Filter hotspots within 5 km radius
+            if distance_km <= 50:  # Filter hotspots within 5 km radius
                 severity = calculate_crime_severity(crime_data[crime_data['district'] == row['District']])
                 nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity))
         
@@ -278,7 +278,7 @@ def location_wise_analysis():
             
             # Add hotspots to the map
             for district, lat, lon, severity in nearby_hotspots:
-                color = "green" if severity < 5 else "orange" if severity < 15 else "red"
+                color = "green" if severity < 1 else "orange" if severity < 5 else "red"
                 folium.CircleMarker(
                     location=[lat, lon],
                     radius=10,
