@@ -276,95 +276,64 @@ def district_wise_analysis():
         else:
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 # Location-wise Crime Analysis
-import streamlit as st
-import pandas as pd
-import pickle
-from geopy.distance import geodesic
-import folium
-from streamlit_folium import folium_static
 
+# Location-wise Crime Analysis
 def location_wise_analysis():
-    st.title("📍 Andhra Pradesh Crime Hotspots: Check Safety of a Location")
+    st.title("📍 Crime Hotspots: Find Risk Level in Your Area")
 
-    # Load crime location dataset
-    with open('crime_data (1).pkl', 'rb') as f:
-        data = pickle.load(f)
+    m = folium.Map(location=[20.5937, 78.9629], zoom_start=6)
 
-    # Convert the data into a DataFrame
-    df = pd.DataFrame(data)
+    # Use st_folium to capture map clicks
+    map_data = st_folium(m, height=500, width=700)
 
-    # Function to check safety level within a radius
-    def get_safety_level(latitude, longitude, radius_km=5):
-        # Filter points within the radius
-        nearby_crimes = df[
-            df.apply(lambda row: geodesic((latitude, longitude), (row['Latitude'], row['Longitude'])).km <= radius_km, axis=1)
-        ]
-        if nearby_crimes.empty:
-            return "Safe (No crimes reported in this area)", None
-        # Check if any high-crime hotspots are nearby
-        if (nearby_crimes['Crime Rate'] == 'High').any():
-            return "High Risk", nearby_crimes
-        elif (nearby_crimes['Crime Rate'] == 'Moderate').any():
-            return "Moderate Risk", nearby_crimes
+    # Get latitude & longitude when user clicks on map
+    if map_data and "last_clicked" in map_data:
+        user_location = map_data["last_clicked"]
+        user_lat, user_lon = user_location["lat"], user_location["lng"]
+        
+        st.success(f"✅ Selected Location: ({user_lat}, {user_lon})")
+        
+        # Filter crime hotspots within a 5 km radius
+        nearby_hotspots = []
+        
+        for _, row in location_data.iterrows():
+            hotspot_lat, hotspot_lon = row["Latitude"], row["Longitude"]
+            distance_km = geodesic((user_lat, user_lon), (hotspot_lat, hotspot_lon)).km
+            
+            if distance_km <= 55:  # Filter hotspots within 5 km radius
+                severity = calculate_crime_severity(crime_data[crime_data['district'] == row['District']])
+                nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity))
+        
+        # Display the filtered crime hotspots on a map
+        if nearby_hotspots:
+            st.subheader("🔥 Crime Hotspots within 5 KM Radius")
+
+            crime_map = folium.Map(location=[user_lat, user_lon], zoom_start=14)
+            
+            # Add the user's location
+            folium.Marker(
+                location=[user_lat, user_lon], 
+                popup="📍 Your Location",
+                icon=folium.Icon(color="blue", icon="user")
+            ).add_to(crime_map)
+            
+            # Add hotspots to the map
+            for district, lat, lon, severity in nearby_hotspots:
+                color = "green" if severity < 5 else "orange" if severity < 15 else "red"
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=10,
+                    color=color,
+                    fill=True,
+                    fill_color=color,
+                    fill_opacity=0.7,
+                    popup=f"{district}: {severity}"
+                ).add_to(crime_map)
+            
+            folium_static(crime_map)
+        
         else:
-            return "Safe", nearby_crimes
-
-    # Initialize session state for clicked location
-    if 'clicked_location' not in st.session_state:
-        st.session_state.clicked_location = None
-
-    # Create a Folium map centered on Andhra Pradesh
-    st.subheader("Interactive Map: Click to Check Safety Level")
-    map_center = [16.180, 81.130]  # Center of Andhra Pradesh
-    m = folium.Map(location=map_center, zoom_start=8)
-
-    # Add a click event listener to the map
-    folium.LatLngPopup().add_to(m)
-
-    # Display the map in Streamlit
-    folium_static(m)
-
-    # Use JavaScript to capture the clicked location and send it to Streamlit
-    js_code = """
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const map = document.querySelector('.folium-map');
-        map.addEventListener('click', function(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            fetch('/clicked_location?lat=' + lat + '&lng=' + lng);
-        });
-    });
-    </script>
-    """
-    st.components.v1.html(js_code)
-
-    # Check if the location is clicked and get the safety level
-    if 'clicked_location' in st.session_state and st.session_state.clicked_location:
-        if 'lat' in st.session_state and 'lng' in st.session_state:
-            latitude = st.session_state.lat
-            longitude = st.session_state.lng
-            safety_level, nearby_crimes = get_safety_level(latitude, longitude)
-            st.write(f"Safety Level at Latitude {latitude}, Longitude {longitude}: {safety_level}")
-
-            # Display nearby crime data if available
-            if nearby_crimes is not None:
-                st.subheader("Nearby Crime Data")
-                st.write(nearby_crimes[['Area Name', 'Latitude', 'Longitude', 'Crime Rate']])
-
-                # Display crime spots on a new map
-                st.subheader("Crime Hotspots in the Area")
-                m_selected = folium.Map(location=[latitude, longitude], zoom_start=12)
-                for index, row in nearby_crimes.iterrows():
-                    folium.Marker(
-                        location=[row['Latitude'], row['Longitude']],
-                        popup=f"Area: {row['Area Name']}, Crime Rate: {row['Crime Rate']}",
-                        icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
-                    ).add_to(m_selected)
-                folium_static(m_selected)
-
-# Run the function
-location_wise_analysis()
+            st.warning("⚠ No crime hotspots found within 5 KM.")
 # Main App Logic
 def main():
     if 'logged_in' not in st.session_state:
