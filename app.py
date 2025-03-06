@@ -285,14 +285,32 @@ from geopy.distance import geodesic
 from sklearn.cluster import DBSCAN
 from haversine import haversine
 
-def location_wise_analysis():
-    st.title("📍 Crime Hotspots: Find Risk Level in Your Area")
+import streamlit as st
+import folium
+import numpy as np
+import pandas as pd
+from sklearn.cluster import DBSCAN
+from geopy.distance import geodesic
+from streamlit_folium import st_folium, folium_static
 
-    # Load crime location dataset (Assumed to have 'Latitude' and 'Longitude')
-    # Ensure location_data is preloaded before calling this function
+def calculate_crime_severity(crime_subset):
+    """Calculate crime severity based on crime data for a district."""
+    return crime_subset['crime_count'].sum() if not crime_subset.empty else 0  # Adjust column name
+
+def location_wise_analysis():
+    st.title("📍 Andhra Pradesh Crime Hotspots: Find Risk Level in Your Area")
+
+    # Load crime location dataset (Ensure it has 'Latitude', 'Longitude', and 'State')
     global location_data, crime_data  
 
-    m = folium.Map(location=[20.5937, 78.9629], zoom_start=6)
+    # ✅ **Filter only Andhra Pradesh locations**
+    location_data_ap = location_data[location_data["State"].str.lower() == "andhra pradesh"].copy()
+
+    if location_data_ap.empty:
+        st.error("⚠ No location data available for Andhra Pradesh.")
+        return
+
+    m = folium.Map(location=[15.9129, 79.7400], zoom_start=7)  # Centered on Andhra Pradesh
     map_data = st_folium(m, height=500, width=700)
 
     if map_data and "last_clicked" in map_data:
@@ -301,27 +319,27 @@ def location_wise_analysis():
         st.success(f"✅ Selected Location: ({user_lat}, {user_lon})")
 
         # Prepare data for clustering
-        coords = location_data[['Latitude', 'Longitude']].to_numpy()
+        coords = location_data_ap[['Latitude', 'Longitude']].to_numpy()
 
         # Convert latitude & longitude to distance-based metric using Haversine distance
         dbscan = DBSCAN(eps=5/6371, min_samples=3, metric="haversine")  # 5 km radius
         labels = dbscan.fit_predict(np.radians(coords))  # Convert to radians
 
-        location_data["Cluster"] = labels  # Assign cluster labels
+        location_data_ap["Cluster"] = labels  # Assign cluster labels
 
         # Identify crime hotspots near the user's location
         nearby_hotspots = []
-        for _, row in location_data.iterrows():
+        for _, row in location_data_ap.iterrows():
             hotspot_lat, hotspot_lon = row["Latitude"], row["Longitude"]
             distance_km = geodesic((user_lat, user_lon), (hotspot_lat, hotspot_lon)).km
 
-            if distance_km <= 5 and row["Cluster"] != -1:  # Ignore noise points (-1)
+            if distance_km <= 25 and row["Cluster"] != -1:  # Ignore noise points (-1)
                 severity = calculate_crime_severity(crime_data[crime_data['district'] == row['District']])
                 nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity, row["Cluster"]))
 
         # Display clustered crime hotspots
         if nearby_hotspots:
-            st.subheader("🔥 Crime Hotspots within 5 KM Radius (DBSCAN Clustering)")
+            st.subheader("🔥 Crime Hotspots within 5 KM Radius (Andhra Pradesh)")
 
             crime_map = folium.Map(location=[user_lat, user_lon], zoom_start=14)
 
@@ -349,7 +367,7 @@ def location_wise_analysis():
 
             folium_static(crime_map)
         else:
-            st.warning("⚠ No clustered crime hotspots found within 5 KM.")
+            st.warning("⚠ No clustered crime hotspots found within 5 KM in Andhra Pradesh.")
 
 
 # Main App Logic
