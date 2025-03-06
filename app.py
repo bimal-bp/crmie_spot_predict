@@ -300,14 +300,14 @@ def location_wise_analysis():
             df.apply(lambda row: geodesic((latitude, longitude), (row['Latitude'], row['Longitude'])).km <= radius_km, axis=1)
         ]
         if nearby_crimes.empty:
-            return "Safe (No crimes reported in this area)"
+            return "Safe (No crimes reported in this area)", None
         # Check if any high-crime hotspots are nearby
         if (nearby_crimes['Crime Rate'] == 'High').any():
-            return "High Risk"
+            return "High Risk", nearby_crimes
         elif (nearby_crimes['Crime Rate'] == 'Moderate').any():
-            return "Moderate Risk"
+            return "Moderate Risk", nearby_crimes
         else:
-            return "Safe"
+            return "Safe", nearby_crimes
 
     # Initialize session state for clicked location
     if 'clicked_location' not in st.session_state:
@@ -344,19 +344,24 @@ def location_wise_analysis():
         if 'lat' in st.session_state and 'lng' in st.session_state:
             latitude = st.session_state.lat
             longitude = st.session_state.lng
-            safety_level = get_safety_level(latitude, longitude)
+            safety_level, nearby_crimes = get_safety_level(latitude, longitude)
             st.write(f"Safety Level at Latitude {latitude}, Longitude {longitude}: {safety_level}")
 
-            # Display crime spots only after location is selected
-            st.subheader("Crime Hotspots in the Area")
-            m_selected = folium.Map(location=[latitude, longitude], zoom_start=12)
-            for index, row in df.iterrows():
-                folium.Marker(
-                    location=[row['Latitude'], row['Longitude']],
-                    popup=f"Crime Rate: {row['Crime Rate']}",
-                    icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
-                ).add_to(m_selected)
-            folium_static(m_selected)
+            # Display nearby crime data if available
+            if nearby_crimes is not None:
+                st.subheader("Nearby Crime Data")
+                st.write(nearby_crimes[['Latitude', 'Longitude', 'Crime Rate']])
+
+                # Display crime spots on a new map
+                st.subheader("Crime Hotspots in the Area")
+                m_selected = folium.Map(location=[latitude, longitude], zoom_start=12)
+                for index, row in nearby_crimes.iterrows():
+                    folium.Marker(
+                        location=[row['Latitude'], row['Longitude']],
+                        popup=f"Crime Rate: {row['Crime Rate']}",
+                        icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
+                    ).add_to(m_selected)
+                folium_static(m_selected)
 
 # Main App Logic
 def main():
