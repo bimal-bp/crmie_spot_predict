@@ -276,40 +276,56 @@ def district_wise_analysis():
         else:
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 # Location-wise Crime Analysis
-def location_wise_analysis():
-    st.title("📍 Andhra Pradesh Crime Hotspots: Find Risk Level in Your Area")
-
-    # Load crime location dataset (Ensure it has 'Latitude', 'Longitude', and 'State')
-    global location_data, crime_data  
+import streamlit as st
 import pickle
 import pandas as pd
 from sklearn.cluster import DBSCAN
 import numpy as np
 
-# Load the data from the .pkl file
-with open('crime_data (1).pkl', 'rb') as f:
-    data = pickle.load(f)
+def location_wise_analysis():
+    st.title("📍 Andhra Pradesh Crime Hotspots: Find Risk Level in Your Area")
 
-# Convert the data into a DataFrame
-df = pd.DataFrame(data)
+    # Load crime location dataset
+    with open('crime_data (1).pkl', 'rb') as f:
+        data = pickle.load(f)
 
-# Extract latitude and longitude for DBSCAN
-coordinates = df[['Latitude', 'Longitude']].values
+    # Convert the data into a DataFrame
+    df = pd.DataFrame(data)
 
-# Apply DBSCAN
-# eps is the maximum distance between two samples for them to be considered as in the same neighborhood.
-# min_samples is the number of samples in a neighborhood for a point to be considered as a core point.
-dbscan = DBSCAN(eps=0.01, min_samples=2)
-df['Cluster'] = dbscan.fit_predict(coordinates)
+    # Extract latitude and longitude for DBSCAN
+    coordinates = df[['Latitude', 'Longitude']].values
 
-# Analyze the clusters
-for cluster in df['Cluster'].unique():
-    cluster_data = df[df['Cluster'] == cluster]
-    print(f"Cluster {cluster}:")
-    print(cluster_data)
-    print("\n")
+    # Apply DBSCAN
+    dbscan = DBSCAN(eps=0.01, min_samples=2)
+    df['Cluster'] = dbscan.fit_predict(coordinates)
 
-# Predict crime type based on the cluster
+    # Display clusters in Streamlit
+    st.subheader("Clusters and Crime Data")
+    for cluster in df['Cluster'].unique():
+        cluster_data = df[df['Cluster'] == cluster]
+        st.write(f"Cluster {cluster}:")
+        st.dataframe(cluster_data)
+
+    # Predict crime type based on the cluster
+    st.subheader("Predict Crime Type for a Location")
+    latitude = st.number_input("Enter Latitude", value=16.180)
+    longitude = st.number_input("Enter Longitude", value=81.130)
+
+    if st.button("Predict Crime Type"):
+        point = np.array([[latitude, longitude]])
+        cluster = dbscan.fit_predict(point)[0]
+        if cluster == -1:
+            predicted_crime_type = "Unknown (Noise)"
+        else:
+            cluster_data = df[df['Cluster'] == cluster]
+            crime_rate = cluster_data['Crime Rate'].mode()[0]
+            predicted_crime_type = crime_rate
+
+        st.write(f"Predicted Crime Type for Latitude {latitude}, Longitude {longitude}: {predicted_crime_type}")
+
+# Run the function
+if __name__ == "__main__":
+    location_wise_analysis()
 # For example, if a cluster has mostly 'High' crime rates, we can predict that new points in that cluster are likely to have 'High' crime rates.
 def predict_crime_type(latitude, longitude):
     point = np.array([[latitude, longitude]])
