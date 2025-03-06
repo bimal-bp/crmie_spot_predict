@@ -237,48 +237,67 @@ def district_wise_analysis():
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 
 # Location-wise Crime Analysis
+import streamlit as st
+import folium
+import pandas as pd
+import numpy as np
+from streamlit_folium import folium_static, st_folium
+from geopy.distance import geodesic
+from sklearn.cluster import DBSCAN
+from haversine import haversine
+
 def location_wise_analysis():
     st.title("📍 Crime Hotspots: Find Risk Level in Your Area")
 
-    m = folium.Map(location=[20.5937, 78.9629], zoom_start=6)
+    # Load crime location dataset (Assumed to have 'Latitude' and 'Longitude')
+    # Ensure location_data is preloaded before calling this function
+    global location_data, crime_data  
 
-    # Use st_folium to capture map clicks
+    m = folium.Map(location=[20.5937, 78.9629], zoom_start=6)
     map_data = st_folium(m, height=500, width=700)
 
-    # Get latitude & longitude when user clicks on map
     if map_data and "last_clicked" in map_data:
         user_location = map_data["last_clicked"]
         user_lat, user_lon = user_location["lat"], user_location["lng"]
-        
         st.success(f"✅ Selected Location: ({user_lat}, {user_lon})")
-        
-        # Filter crime hotspots within a 5 km radius
+
+        # Prepare data for clustering
+        coords = location_data[['Latitude', 'Longitude']].to_numpy()
+
+        # Convert latitude & longitude to distance-based metric using Haversine distance
+        dbscan = DBSCAN(eps=5/6371, min_samples=3, metric="haversine")  # 5 km radius
+        labels = dbscan.fit_predict(np.radians(coords))  # Convert to radians
+
+        location_data["Cluster"] = labels  # Assign cluster labels
+
+        # Identify crime hotspots near the user's location
         nearby_hotspots = []
-        
         for _, row in location_data.iterrows():
             hotspot_lat, hotspot_lon = row["Latitude"], row["Longitude"]
             distance_km = geodesic((user_lat, user_lon), (hotspot_lat, hotspot_lon)).km
-            
-            if distance_km <= 25:  # Filter hotspots within 5 km radius
+
+            if distance_km <= 5 and row["Cluster"] != -1:  # Ignore noise points (-1)
                 severity = calculate_crime_severity(crime_data[crime_data['district'] == row['District']])
-                nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity))
-        
-        # Display the filtered crime hotspots on a map
+                nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity, row["Cluster"]))
+
+        # Display clustered crime hotspots
         if nearby_hotspots:
-            st.subheader("🔥 Crime Hotspots within 5 KM Radius")
+            st.subheader("🔥 Crime Hotspots within 5 KM Radius (DBSCAN Clustering)")
 
             crime_map = folium.Map(location=[user_lat, user_lon], zoom_start=14)
-            
-            # Add the user's location
+
+            # Add user location marker
             folium.Marker(
                 location=[user_lat, user_lon], 
                 popup="📍 Your Location",
                 icon=folium.Icon(color="blue", icon="user")
             ).add_to(crime_map)
+
+            # Color mapping for clusters
+            cluster_colors = ["green", "orange", "red", "purple", "brown", "pink"]
             
-            # Add hotspots to the map
-            for district, lat, lon, severity in nearby_hotspots:
-                color = "green" if severity < 1 else "orange" if severity < 5 else "red"
+            for district, lat, lon, severity, cluster in nearby_hotspots:
+                color = cluster_colors[cluster % len(cluster_colors)]  # Assign color per cluster
                 folium.CircleMarker(
                     location=[lat, lon],
                     radius=10,
@@ -286,13 +305,13 @@ def location_wise_analysis():
                     fill=True,
                     fill_color=color,
                     fill_opacity=0.7,
-                    popup=f"{district}: {severity}"
+                    popup=f"{district}: Severity {severity}, Cluster {cluster}"
                 ).add_to(crime_map)
-            
+
             folium_static(crime_map)
-        
         else:
-            st.warning("⚠ No crime hotspots found within 5 KM.")
+            st.warning("⚠ No clustered crime hotspots found within 5 KM.")
+
 
 # Main App Logic
 def main():
