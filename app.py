@@ -287,8 +287,15 @@ import folium
 from streamlit_folium import folium_static
 from geopy.distance import geodesic
 
+import streamlit as st
+import pandas as pd
+import pickle
+from geopy.distance import geodesic
+import folium
+from streamlit_folium import folium_static
+
 def location_wise_analysis():
-    st.title("📍 Andhra Pradesh Crime Hotspots: Find Risk Level in Your Area")
+    st.title("📍 Andhra Pradesh Crime Hotspots: Check Safety of a Location")
 
     # Load crime location dataset
     with open('crime_data (1).pkl', 'rb') as f:
@@ -297,24 +304,23 @@ def location_wise_analysis():
     # Convert the data into a DataFrame
     df = pd.DataFrame(data)
 
-    # Extract latitude and longitude for DBSCAN
-    coordinates = df[['Latitude', 'Longitude']].values
+    # Create a Folium map centered on Andhra Pradesh
+    st.subheader("Interactive Map: Click to Check Safety Level")
+    map_center = [16.180, 81.130]  # Center of Andhra Pradesh
+    m = folium.Map(location=map_center, zoom_start=8)
 
-    # Apply DBSCAN
-    dbscan = DBSCAN(eps=0.01, min_samples=2)
-    df['Cluster'] = dbscan.fit_predict(coordinates)
+    # Add crime hotspots to the map
+    for index, row in df.iterrows():
+        folium.Marker(
+            location=[row['Latitude'], row['Longitude']],
+            popup=f"Crime Rate: {row['Crime Rate']}",
+            icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
+        ).add_to(m)
 
-    # Function to predict crime type based on cluster
-    def predict_crime_type(latitude, longitude):
-        point = np.array([[latitude, longitude]])
-        cluster = dbscan.fit_predict(point)[0]
-        if cluster == -1:
-            return "Unknown (Noise)"
-        cluster_data = df[df['Cluster'] == cluster]
-        crime_rate = cluster_data['Crime Rate'].mode()[0]
-        return crime_rate
+    # Display the map in Streamlit
+    folium_static(m)
 
-    # Function to calculate safety level within a 5 km radius
+    # Function to check safety level within a radius
     def get_safety_level(latitude, longitude, radius_km=5):
         # Filter points within the radius
         nearby_crimes = df[
@@ -322,32 +328,13 @@ def location_wise_analysis():
         ]
         if nearby_crimes.empty:
             return "Safe (No crimes reported in this area)"
-        # Calculate the average crime rate in the radius
-        avg_crime_rate = nearby_crimes['Crime Rate'].mean()
-        if avg_crime_rate < 0.33:
-            return "Safe"
-        elif 0.33 <= avg_crime_rate < 0.66:
-            return "Moderate"
-        else:
+        # Check if any high-crime hotspots are nearby
+        if (nearby_crimes['Crime Rate'] == 'High').any():
             return "High Risk"
-
-    # Display clusters in Streamlit
-    st.subheader("Clusters and Crime Data")
-    for cluster in df['Cluster'].unique():
-        cluster_data = df[df['Cluster'] == cluster]
-        st.write(f"Cluster {cluster}:")
-        st.dataframe(cluster_data)
-
-    # Create a Folium map centered on Andhra Pradesh
-    st.subheader("Interactive Map: Click to Check Safety Level")
-    map_center = [16.180, 81.130]  # Center of Andhra Pradesh
-    m = folium.Map(location=map_center, zoom_start=8)
-
-    # Add a click event to the map
-    folium.LatLngPopup().add_to(m)
-
-    # Display the map in Streamlit
-    folium_static(m)
+        elif (nearby_crimes['Crime Rate'] == 'Moderate').any():
+            return "Moderate Risk"
+        else:
+            return "Safe"
 
     # Get the clicked location from the map
     if st.button("Check Safety Level at Clicked Location"):
