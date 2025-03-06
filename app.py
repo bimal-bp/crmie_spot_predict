@@ -278,14 +278,7 @@ def district_wise_analysis():
 # Location-wise Crime Analysis
 
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import pickle
-from sklearn.cluster import DBSCAN
-import folium
-from streamlit_folium import folium_static
-from geopy.distance import geodesic
+
 
 import streamlit as st
 import pandas as pd
@@ -324,7 +317,8 @@ def location_wise_analysis():
     def get_safety_level(latitude, longitude, radius_km=5):
         # Filter points within the radius
         nearby_crimes = df[
-            df.apply(lambda row: geodesic((latitude, longitude), (row['Latitude'], row['Longitude'])).km <= radius_km, axis=1]
+            df.apply(lambda row: geodesic((latitude, longitude), (row['Latitude'], row['Longitude'])).km <= radius_km, axis=1)
+        ]
         if nearby_crimes.empty:
             return "Safe (No crimes reported in this area)"
         # Check if any high-crime hotspots are nearby
