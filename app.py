@@ -123,23 +123,11 @@ crime_weights = {
     'dowry deaths': 3
 }
 
-def calculate_crime_severity(crime_subset):
-    """Calculate crime severity based on crime data for a district."""
-    # Debugging: Print column names and shape of the DataFrame
-    print("Columns in crime_subset:", crime_subset.columns)
-    print("Shape of crime_subset:", crime_subset.shape)
-    
-    # Check if the DataFrame is empty
-    if crime_subset.empty:
-        return 0
-    
-    # Ensure the column 'crime_count' exists
-    if 'crime_count' not in crime_subset.columns:
-        st.error("Column 'crime_count' not found in the DataFrame.")
-        return 0
-    
-    # Calculate the sum of crime counts
-    return crime_subset['crime_count'].sum()
+def calculate_crime_severity(df):
+    weighted_sum = sum(df[col].sum() * weight for col, weight in crime_weights.items())
+    max_possible = sum(500 * weight for weight in crime_weights.values())
+    crime_index = (weighted_sum / max_possible) * 100 if max_possible > 0 else 0
+    return round(crime_index, 2)
 
 # Login Page
 def login_page():
@@ -283,83 +271,60 @@ def district_wise_analysis():
         
         if crime_severity_index < 10:
             st.markdown("<div class='success-alert'>🟢 This area is relatively safe.</div>", unsafe_allow_html=True)
-        elif 11 <= crime_severity_index <= 25:
+        elif 11<= crime_severity_index <= 25:
             st.markdown("<div class='warning-alert'>🟠 Moderate risk; stay cautious.</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
-
 # Location-wise Crime Analysis
 def location_wise_analysis():
     st.title("📍 Andhra Pradesh Crime Hotspots: Find Risk Level in Your Area")
 
     # Load crime location dataset (Ensure it has 'Latitude', 'Longitude', and 'State')
     global location_data, crime_data  
+import pickle
+import pandas as pd
+from sklearn.cluster import DBSCAN
+import numpy as np
 
-    # ✅ **Filter only Andhra Pradesh locations**
-    location_data_ap = location_data[location_data["State"].str.lower() == "andhra pradesh"].copy()
+# Load the data from the .pkl file
+with open('/content/crime_data (1).pkl', 'rb') as f:
+    data = pickle.load(f)
 
-    if location_data_ap.empty:
-        st.error("⚠ No location data available for Andhra Pradesh.")
-        return
+# Convert the data into a DataFrame
+df = pd.DataFrame(data)
 
-    m = folium.Map(location=[15.9129, 79.7400], zoom_start=7)  # Centered on Andhra Pradesh
-    map_data = st_folium(m, height=500, width=700)
+# Extract latitude and longitude for DBSCAN
+coordinates = df[['Latitude', 'Longitude']].values
 
-    if map_data and "last_clicked" in map_data:
-        user_location = map_data["last_clicked"]
-        user_lat, user_lon = user_location["lat"], user_location["lng"]
-        st.success(f"✅ Selected Location: ({user_lat}, {user_lon})")
+# Apply DBSCAN
+# eps is the maximum distance between two samples for them to be considered as in the same neighborhood.
+# min_samples is the number of samples in a neighborhood for a point to be considered as a core point.
+dbscan = DBSCAN(eps=0.01, min_samples=2)
+df['Cluster'] = dbscan.fit_predict(coordinates)
 
-        # Prepare data for clustering
-        coords = location_data_ap[['Latitude', 'Longitude']].to_numpy()
+# Analyze the clusters
+for cluster in df['Cluster'].unique():
+    cluster_data = df[df['Cluster'] == cluster]
+    print(f"Cluster {cluster}:")
+    print(cluster_data)
+    print("\n")
 
-        # Convert latitude & longitude to distance-based metric using Haversine distance
-        dbscan = DBSCAN(eps=5/6371, min_samples=3, metric="haversine")  # 5 km radius
-        labels = dbscan.fit_predict(np.radians(coords))  # Convert to radians
+# Predict crime type based on the cluster
+# For example, if a cluster has mostly 'High' crime rates, we can predict that new points in that cluster are likely to have 'High' crime rates.
+def predict_crime_type(latitude, longitude):
+    point = np.array([[latitude, longitude]])
+    cluster = dbscan.fit_predict(point)[0]
+    if cluster == -1:
+        return "Unknown (Noise)"
+    cluster_data = df[df['Cluster'] == cluster]
+    crime_rate = cluster_data['Crime Rate'].mode()[0]
+    return crime_rate
 
-        location_data_ap["Cluster"] = labels  # Assign cluster labels
-
-        # Identify crime hotspots near the user's location
-        nearby_hotspots = []
-        for _, row in location_data_ap.iterrows():
-            hotspot_lat, hotspot_lon = row["Latitude"], row["Longitude"]
-            distance_km = geodesic((user_lat, user_lon), (hotspot_lat, hotspot_lon)).km
-
-            if distance_km <= 25 and row["Cluster"] != -1:  # Ignore noise points (-1)
-                severity = calculate_crime_severity(crime_data[crime_data['district'] == row['District']])
-                nearby_hotspots.append((row["District"], hotspot_lat, hotspot_lon, severity, row["Cluster"]))
-
-        # Display clustered crime hotspots
-        if nearby_hotspots:
-            st.subheader("🔥 Crime Hotspots within 5 KM Radius (Andhra Pradesh)")
-
-            crime_map = folium.Map(location=[user_lat, user_lon], zoom_start=14)
-
-            # Add user location marker
-            folium.Marker(
-                location=[user_lat, user_lon], 
-                popup="📍 Your Location",
-                icon=folium.Icon(color="blue", icon="user")
-            ).add_to(crime_map)
-
-            # Color mapping for clusters
-            cluster_colors = ["green", "orange", "red", "purple", "brown", "pink"]
-            
-            for district, lat, lon, severity, cluster in nearby_hotspots:
-                color = cluster_colors[cluster % len(cluster_colors)]  # Assign color per cluster
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=10,
-                    color=color,
-                    fill=True,
-                    fill_color=color,
-                    fill_opacity=0.7,
-                    popup=f"{district}: Severity {severity}, Cluster {cluster}"
-                ).add_to(crime_map)
-
-            folium_static(crime_map)
-        else:
-            st.warning("⚠ No clustered crime hotspots found within 5 KM in Andhra Pradesh.")
+# Example prediction
+latitude = 16.180
+longitude = 81.130
+predicted_crime_type = predict_crime_type(latitude, longitude)
+print(f"Predicted Crime Type for Latitude {latitude}, Longitude {longitude}: {predicted_crime_type}")
 
 # Main App Logic
 def main():
