@@ -287,7 +287,7 @@ from sklearn.cluster import DBSCAN
 import numpy as np
 
 # Load the data from the .pkl file
-with open('/content/crime_data (1).pkl', 'rb') as f:
+with open('crime_data (1).pkl', 'rb') as f:
     data = pickle.load(f)
 
 # Convert the data into a DataFrame
