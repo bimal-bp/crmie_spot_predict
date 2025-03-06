@@ -324,8 +324,7 @@ def location_wise_analysis():
     def get_safety_level(latitude, longitude, radius_km=5):
         # Filter points within the radius
         nearby_crimes = df[
-            df.apply(lambda row: geodesic((latitude, longitude), (row['Latitude'], row['Longitude'])).km <= radius_km, axis=1
-        ]
+            df.apply(lambda row: geodesic((latitude, longitude), (row['Latitude'], row['Longitude'])).km <= radius_km, axis=1]
         if nearby_crimes.empty:
             return "Safe (No crimes reported in this area)"
         # Check if any high-crime hotspots are nearby
