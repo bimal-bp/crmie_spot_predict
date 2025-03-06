@@ -6,6 +6,8 @@ from geopy.distance import geodesic
 import pickle
 import math
 import os
+import numpy as np
+from sklearn.cluster import DBSCAN
 
 # Custom CSS for styling
 st.markdown("""
@@ -91,7 +93,6 @@ crime_suggestions = {
     '8': "Educate children about safety, avoid sharing personal details with strangers.",
     '9': "Improve community policing and strengthen law enforcement presence."
 }
-
 
 # Load Crime Data
 @st.cache_data
@@ -288,19 +289,6 @@ def district_wise_analysis():
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 
 # Location-wise Crime Analysis
-
-import streamlit as st
-import folium
-import numpy as np
-import pandas as pd
-from sklearn.cluster import DBSCAN
-from geopy.distance import geodesic
-from streamlit_folium import st_folium, folium_static
-
-def calculate_crime_severity(crime_subset):
-    """Calculate crime severity based on crime data for a district."""
-    return crime_subset['crime_count'].sum() if not crime_subset.empty else 0  # Adjust column name
-
 def location_wise_analysis():
     st.title("📍 Andhra Pradesh Crime Hotspots: Find Risk Level in Your Area")
 
@@ -372,7 +360,6 @@ def location_wise_analysis():
             folium_static(crime_map)
         else:
             st.warning("⚠ No clustered crime hotspots found within 5 KM in Andhra Pradesh.")
-
 
 # Main App Logic
 def main():
