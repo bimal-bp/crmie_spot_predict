@@ -276,10 +276,6 @@ def district_wise_analysis():
         else:
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 # Location-wise Crime Analysis
-
-
-
-
 import streamlit as st
 import pandas as pd
 import pickle
@@ -297,22 +293,6 @@ def location_wise_analysis():
     # Convert the data into a DataFrame
     df = pd.DataFrame(data)
 
-    # Create a Folium map centered on Andhra Pradesh
-    st.subheader("Interactive Map: Click to Check Safety Level")
-    map_center = [16.180, 81.130]  # Center of Andhra Pradesh
-    m = folium.Map(location=map_center, zoom_start=8)
-
-    # Add crime hotspots to the map
-    for index, row in df.iterrows():
-        folium.Marker(
-            location=[row['Latitude'], row['Longitude']],
-            popup=f"Crime Rate: {row['Crime Rate']}",
-            icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
-        ).add_to(m)
-
-    # Display the map in Streamlit
-    folium_static(m)
-
     # Function to check safety level within a radius
     def get_safety_level(latitude, longitude, radius_km=5):
         # Filter points within the radius
@@ -329,44 +309,53 @@ def location_wise_analysis():
         else:
             return "Safe"
 
-    # Get the clicked location from the map
-    if st.button("Check Safety Level at Clicked Location"):
-        # Use Streamlit's session state to store the clicked location
-        if 'clicked_location' not in st.session_state:
-            st.warning("Please click on the map to select a location.")
-        else:
-            latitude, longitude = st.session_state.clicked_location
-            safety_level = get_safety_level(latitude, longitude)
-            st.write(f"Safety Level at Latitude {latitude}, Longitude {longitude}: {safety_level}")
-
-    # Store the clicked location in session state
+    # Initialize session state for clicked location
     if 'clicked_location' not in st.session_state:
         st.session_state.clicked_location = None
 
-    # Add a click event listener to the map
-    folium.LatLngPopup().add_to(m)
+    # Button to trigger location selection
+    if st.button("Click to Select Location on Map"):
+        st.session_state.clicked_location = True
 
-    # Use JavaScript to send the clicked location to Streamlit
-    folium_static(m)
+    # If a location is clicked, show the map and safety level
+    if st.session_state.clicked_location:
+        st.subheader("Interactive Map: Click to Check Safety Level")
+        map_center = [16.180, 81.130]  # Center of Andhra Pradesh
+        m = folium.Map(location=map_center, zoom_start=8)
 
-    # JavaScript to capture the clicked location and send it to Streamlit
-    js_code = """
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const map = document.querySelector('.folium-map');
-        map.addEventListener('click', function(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-            fetch('/clicked_location?lat=' + lat + '&lng=' + lng);
+        # Add crime hotspots to the map
+        for index, row in df.iterrows():
+            folium.Marker(
+                location=[row['Latitude'], row['Longitude']],
+                popup=f"Crime Rate: {row['Crime Rate']}",
+                icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
+            ).add_to(m)
+
+        # Display the map in Streamlit
+        folium_static(m)
+
+        # Use JavaScript to capture the clicked location
+        js_code = """
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const map = document.querySelector('.folium-map');
+            map.addEventListener('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                fetch('/clicked_location?lat=' + lat + '&lng=' + lng);
+            });
         });
-    });
-    </script>
-    """
-    st.components.v1.html(js_code)
+        </script>
+        """
+        st.components.v1.html(js_code)
 
-# Run the function
-if __name__ == "__main__":
-    location_wise_analysis()
+        # Check if the location is clicked and get the safety level
+        if 'clicked_location' in st.session_state and st.session_state.clicked_location:
+            if 'lat' in st.session_state and 'lng' in st.session_state:
+                latitude = st.session_state.lat
+                longitude = st.session_state.lng
+                safety_level = get_safety_level(latitude, longitude)
+                st.write(f"Safety Level at Latitude {latitude}, Longitude {longitude}: {safety_level}")
 
 # Main App Logic
 def main():
