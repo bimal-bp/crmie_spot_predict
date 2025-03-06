@@ -350,7 +350,7 @@ def location_wise_analysis():
             # Display nearby crime data if available
             if nearby_crimes is not None:
                 st.subheader("Nearby Crime Data")
-                st.write(nearby_crimes[['Latitude', 'Longitude', 'Crime Rate']])
+                st.write(nearby_crimes[['Area Name', 'Latitude', 'Longitude', 'Crime Rate']])
 
                 # Display crime spots on a new map
                 st.subheader("Crime Hotspots in the Area")
@@ -358,11 +358,13 @@ def location_wise_analysis():
                 for index, row in nearby_crimes.iterrows():
                     folium.Marker(
                         location=[row['Latitude'], row['Longitude']],
-                        popup=f"Crime Rate: {row['Crime Rate']}",
+                        popup=f"Area: {row['Area Name']}, Crime Rate: {row['Crime Rate']}",
                         icon=folium.Icon(color='red' if row['Crime Rate'] == 'High' else 'orange')
                     ).add_to(m_selected)
                 folium_static(m_selected)
 
+# Run the function
+location_wise_analysis()
 # Main App Logic
 def main():
     if 'logged_in' not in st.session_state:
