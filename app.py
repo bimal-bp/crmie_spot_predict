@@ -122,11 +122,23 @@ crime_weights = {
     'dowry deaths': 3
 }
 
-def calculate_crime_severity(df):
-    weighted_sum = sum(df[col].sum() * weight for col, weight in crime_weights.items())
-    max_possible = sum(500 * weight for weight in crime_weights.values())
-    crime_index = (weighted_sum / max_possible) * 100 if max_possible > 0 else 0
-    return round(crime_index, 2)
+def calculate_crime_severity(crime_subset):
+    """Calculate crime severity based on crime data for a district."""
+    # Debugging: Print column names and shape of the DataFrame
+    print("Columns in crime_subset:", crime_subset.columns)
+    print("Shape of crime_subset:", crime_subset.shape)
+    
+    # Check if the DataFrame is empty
+    if crime_subset.empty:
+        return 0
+    
+    # Ensure the column 'crime_count' exists
+    if 'crime_count' not in crime_subset.columns:
+        st.error("Column 'crime_count' not found in the DataFrame.")
+        return 0
+    
+    # Calculate the sum of crime counts
+    return crime_subset['crime_count'].sum()
 
 # Login Page
 def login_page():
@@ -270,20 +282,12 @@ def district_wise_analysis():
         
         if crime_severity_index < 10:
             st.markdown("<div class='success-alert'>🟢 This area is relatively safe.</div>", unsafe_allow_html=True)
-        elif 11<= crime_severity_index <= 25:
+        elif 11 <= crime_severity_index <= 25:
             st.markdown("<div class='warning-alert'>🟠 Moderate risk; stay cautious.</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div class='danger-alert'>🔴 High risk! Precaution is advised.</div>", unsafe_allow_html=True)
 
 # Location-wise Crime Analysis
-import streamlit as st
-import folium
-import pandas as pd
-import numpy as np
-from streamlit_folium import folium_static, st_folium
-from geopy.distance import geodesic
-from sklearn.cluster import DBSCAN
-from haversine import haversine
 
 import streamlit as st
 import folium
