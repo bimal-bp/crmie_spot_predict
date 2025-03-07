@@ -162,7 +162,7 @@ def city_wise_analysis():
         pop = population.get(city_code, 0)
         
         # Adjust population based on the year (assuming 1% annual growth)
-        year_diff = year - 2017
+        year_diff = year - 2015
         pop = pop + 0.01 * year_diff * pop
         
         try:
