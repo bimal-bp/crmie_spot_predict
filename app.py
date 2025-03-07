@@ -176,7 +176,7 @@ def city_wise_analysis():
         cases = math.ceil(crime_rate * pop)
         
         # Determine crime severity status
-        if crime_rate <=0.15:
+        if crime_rate <= 0.1:
             crime_status = "🟢 Very Low Crime Area"
             color = "green"
         elif crime_rate <= 19:
